@@ -1,0 +1,5 @@
+Despues de instalar microk8s, habilitar nfs: micik8s anble nfs
+
+Para chequear que se creo el keyspace y la tabla.
+SELECT keyspace_name FROM system_schema.keyspaces;
+SELECT column_name, type FROM system_schema.columns WHERE keyspace_name = 'space' AND table_name = 'data';
