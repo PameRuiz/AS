@@ -8,7 +8,7 @@ from cassandra.policies import RoundRobinPolicy
 
 # Configuración
 CASSANDRA_HOST = '127.0.0.1'
-CASSANDRA_PORT = 9042
+CASSANDRA_PORT = 30042
 KEYSPACE = 'space'
 TABLE = 'data'
 
@@ -29,8 +29,27 @@ def main():
     )
     session = cluster.connect()
     print("Conexión establecida.")
+   # Crear keyspace si no existe
 
-    # Prepared statement para inserción eficiente
+    session.execute("""
+        CREATE KEYSPACE IF NOT EXISTS space
+        WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '3'}
+    """)
+
+    print(f"Keyspace '{KEYSPACE}' listo.")
+
+    # Crear tabla
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS space.data (
+            who text,
+            when timestamp,
+            counter int,
+            attempt int,
+            PRIMARY KEY (who, when)
+        )
+    """)
+
+    # Prepared statement con prefijo completo
     insert_stmt = session.prepare(f"""
         INSERT INTO {KEYSPACE}.{TABLE} (who, when, counter, attempt)
         VALUES (?, ?, ?, ?)
@@ -54,6 +73,13 @@ def main():
 
         except Exception as e:
             print(f"[ERROR] Intento {attempt} fallido: {e}")
+            counter -= 1  # Decrementar el contador local si falla la inserción
+            cluster = Cluster(
+                        [CASSANDRA_HOST],
+                        port=CASSANDRA_PORT,
+                        load_balancing_policy=RoundRobinPolicy()
+            )
+            session = cluster.connect()
 
         time.sleep(1)
 
